@@ -379,10 +379,30 @@ class Reader {
   private onIntersect(entries: IntersectionObserverEntry[]): void {
     for (const entry of entries) {
       const n = Number((entry.target as HTMLElement).dataset.page);
-      this.ratios.set(n, entry.isIntersecting ? entry.intersectionRatio : 0);
-      if (entry.isIntersecting) void this.renderPage(n);
+      if (entry.isIntersecting) {
+        this.ratios.set(n, entry.intersectionRatio);
+        void this.renderPage(n);
+      } else {
+        // Past the observer's margin (~2 screens away): free the canvas so we
+        // never blow iOS Safari's canvas-memory cap on long documents.
+        this.ratios.set(n, 0);
+        this.unrenderPage(n);
+      }
     }
     this.updateCurrentPage();
+  }
+
+  /** Tear down a far-offscreen page's canvas/layers, keeping its height so the
+   * scroll position doesn't shift. It re-renders when scrolled back into view. */
+  private unrenderPage(n: number): void {
+    if (!this.rendered.has(n)) return;
+    const box = this.pageEl(n);
+    if (box) {
+      const h = box.getBoundingClientRect().height;
+      if (h > 0) box.style.height = `${h}px`;
+      box.replaceChildren();
+    }
+    this.rendered.delete(n);
   }
 
   private async renderPage(n: number): Promise<void> {
@@ -430,6 +450,7 @@ class Reader {
       if (this.disposed) return;
 
       box.style.aspectRatio = "";
+      box.style.height = ""; // clear any frozen height from recycling
       box.replaceChildren(canvas, textLayer, this.annotationLayerFor(n));
     } catch {
       this.rendered.delete(n);
