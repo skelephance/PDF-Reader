@@ -550,17 +550,41 @@ class Reader {
       },
       { passive: false },
     );
-    this.pages.addEventListener("gesturestart", (e: Event) => {
-      e.preventDefault();
-      // @ts-ignore - Safari gesture event
-      updateOrigin(e.clientX || window.innerWidth / 2, e.clientY || window.innerHeight / 2);
-      this.gestureStart = this.zoom.scale;
-    });
-    this.pages.addEventListener("gesturechange", (e: Event) => {
-      e.preventDefault();
-      const scale = (e as unknown as { scale: number }).scale;
-      this.zoom.setScale(this.gestureStart * scale);
-    });
+    let initialDistance = 0;
+
+    this.pages.addEventListener(
+      "touchstart",
+      (e: TouchEvent) => {
+        if (e.touches.length === 2) {
+          e.preventDefault(); // Stop native Safari zoom/pan
+          const t1 = e.touches[0];
+          const t2 = e.touches[1];
+          initialDistance = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+          const cx = (t1.clientX + t2.clientX) / 2;
+          const cy = (t1.clientY + t2.clientY) / 2;
+          updateOrigin(cx, cy);
+          this.gestureStart = this.zoom.scale;
+        }
+      },
+      { passive: false }
+    );
+
+    this.pages.addEventListener(
+      "touchmove",
+      (e: TouchEvent) => {
+        if (e.touches.length === 2) {
+          e.preventDefault(); // Stop native Safari zoom/pan
+          const t1 = e.touches[0];
+          const t2 = e.touches[1];
+          const distance = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+          if (initialDistance > 0) {
+            const scale = distance / initialDistance;
+            this.zoom.setScale(this.gestureStart * scale);
+          }
+        }
+      },
+      { passive: false }
+    );
   }
 
   private commitZoom(scale: number): void {
