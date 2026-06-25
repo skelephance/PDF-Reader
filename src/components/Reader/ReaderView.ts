@@ -104,8 +104,11 @@ class Reader {
   private annotations: Annotation[] = [];
   private bookmarks: Bookmark[] = [];
   private readonly rendered = new Set<number>();
-  private observer: IntersectionObserver | null = null;
-  private readonly ratios = new Map<number, number>();
+  // Wide-margin observer schedules rendering/recycling; tight observer tracks
+  // which page actually fills the viewport (for the page number + progress).
+  private renderObserver: IntersectionObserver | null = null;
+  private visibilityObserver: IntersectionObserver | null = null;
+  private readonly visible = new Map<number, number>();
   private currentPage = 1;
   private saveTimer: number | undefined;
   private disposed = false;
@@ -280,9 +283,11 @@ class Reader {
   }
 
   private teardownDoc(): void {
-    this.observer?.disconnect();
-    this.observer = null;
-    this.ratios.clear();
+    this.renderObserver?.disconnect();
+    this.renderObserver = null;
+    this.visibilityObserver?.disconnect();
+    this.visibilityObserver = null;
+    this.visible.clear();
     this.rendered.clear();
     this.annotations = [];
     this.outline = null;
@@ -368,26 +373,41 @@ class Reader {
   }
 
   private setupObserver(): void {
-    this.observer = new IntersectionObserver((entries) => this.onIntersect(entries), {
-      root: this.pages,
-      rootMargin: "200% 0px",
-      threshold: [0, 0.25, 0.5, 0.75, 1],
-    });
-    for (const el of this.zoomWrap.children) this.observer.observe(el);
+    // Wide margin: render/recycle pages within ~2 screens of the viewport.
+    this.renderObserver = new IntersectionObserver(
+      (entries) => this.onRenderIntersect(entries),
+      { root: this.pages, rootMargin: "200% 0px", threshold: [0, 1] },
+    );
+    // Tight (actual viewport): track which page is genuinely on screen, by how
+    // much of it is visible — this drives the page number and saved progress.
+    this.visibilityObserver = new IntersectionObserver(
+      (entries) => this.onVisibilityChange(entries),
+      { root: this.pages, rootMargin: "0px", threshold: [0, 0.1, 0.25, 0.5, 0.75, 1] },
+    );
+    for (const el of this.zoomWrap.children) {
+      this.renderObserver.observe(el);
+      this.visibilityObserver.observe(el);
+    }
   }
 
-  private onIntersect(entries: IntersectionObserverEntry[]): void {
+  private onRenderIntersect(entries: IntersectionObserverEntry[]): void {
     for (const entry of entries) {
       const n = Number((entry.target as HTMLElement).dataset.page);
       if (entry.isIntersecting) {
-        this.ratios.set(n, entry.intersectionRatio);
         void this.renderPage(n);
       } else {
-        // Past the observer's margin (~2 screens away): free the canvas so we
-        // never blow iOS Safari's canvas-memory cap on long documents.
-        this.ratios.set(n, 0);
+        // Past the margin (~2 screens away): free the canvas so we never blow
+        // iOS Safari's canvas-memory cap on long documents.
         this.unrenderPage(n);
       }
+    }
+  }
+
+  private onVisibilityChange(entries: IntersectionObserverEntry[]): void {
+    for (const entry of entries) {
+      const n = Number((entry.target as HTMLElement).dataset.page);
+      // Visible height in actual viewport pixels — robust regardless of size.
+      this.visible.set(n, entry.isIntersecting ? entry.intersectionRect.height : 0);
     }
     this.updateCurrentPage();
   }
@@ -472,11 +492,12 @@ class Reader {
   }
 
   private updateCurrentPage(): void {
+    // The current page is the one with the most visible height in the viewport.
     let best = this.currentPage;
-    let bestRatio = -1;
-    for (const [n, ratio] of this.ratios) {
-      if (ratio > bestRatio) {
-        bestRatio = ratio;
+    let bestHeight = 0;
+    for (const [n, height] of this.visible) {
+      if (height > bestHeight) {
+        bestHeight = height;
         best = n;
       }
     }
@@ -520,7 +541,9 @@ class Reader {
       (e: WheelEvent) => {
         if (!e.ctrlKey) return;
         e.preventDefault();
-        this.zoom.zoomBy(Math.exp(-e.deltaY * 0.01));
+        // Gentle: clamp each event so trackpad pinches don't jump scale.
+        const step = Math.max(-0.06, Math.min(0.06, -e.deltaY * 0.0025));
+        this.zoom.zoomBy(1 + step);
       },
       { passive: false },
     );
@@ -538,11 +561,10 @@ class Reader {
   private commitZoom(scale: number): void {
     this.zoomWrap.style.setProperty("--zoom", String(scale));
     this.zoomWrap.style.transform = "";
-    for (const [n, ratio] of this.ratios) {
-      if (ratio > 0) {
-        this.rendered.delete(n);
-        void this.renderPage(n);
-      }
+    // Re-render the currently rendered pages crisply at the new scale.
+    for (const n of [...this.rendered]) {
+      this.rendered.delete(n);
+      void this.renderPage(n);
     }
   }
 
