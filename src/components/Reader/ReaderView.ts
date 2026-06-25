@@ -90,7 +90,8 @@ class Reader {
   private readonly overlayTitle: HTMLElement;
   private readonly overlayBody: HTMLElement;
   private readonly backdrop: HTMLElement;
-  private readonly menu: HTMLElement;
+  private readonly highlightButton: HTMLButtonElement;
+  private readonly annotateButton: HTMLButtonElement;
 
   private route: Route;
   private docHash: string;
@@ -163,10 +164,24 @@ class Reader {
     this.collapseButton.title = "Hide controls";
     this.collapseButton.addEventListener("click", () => this.setImmersive(true));
 
+    // Selection actions live in the toolbar (not a floating menu) so iOS
+    // Safari's native selection callout can't cover them.
+    this.highlightButton = document.createElement("button");
+    this.highlightButton.className = "reader__action";
+    this.highlightButton.textContent = "Highlight";
+    this.highlightButton.addEventListener("click", () => void this.doHighlight());
+
+    this.annotateButton = document.createElement("button");
+    this.annotateButton.className = "reader__action";
+    this.annotateButton.textContent = "Note";
+    this.annotateButton.addEventListener("click", () => this.doAnnotate());
+
     // Page indicator on the left; all actions grouped on the right.
     const actions = document.createElement("div");
     actions.className = "reader__actions";
     actions.append(
+      this.highlightButton,
+      this.annotateButton,
       this.themeButton,
       this.bookmarkButton,
       zoomControls,
@@ -178,7 +193,6 @@ class Reader {
     // Scroll container (the viewport frame that carries the reading theme).
     this.pages = document.createElement("div");
     this.pages.className = "reader__pages pdf-viewport-frame";
-    this.pages.addEventListener("scroll", () => this.hideMenu(), { passive: true });
     this.zoomWrap = document.createElement("div");
     this.zoomWrap.className = "reader__zoom";
     this.pages.appendChild(this.zoomWrap);
@@ -195,14 +209,6 @@ class Reader {
     this.overlayBody.className = "reader__overlay-body";
     this.overlay.append(this.overlayTitle, this.overlayBody);
 
-    // Floating selection menu (outside the zoom wrapper so it isn't transformed).
-    this.menu = document.createElement("div");
-    this.menu.className = "reader__menu";
-    this.menu.append(
-      this.menuButton("Highlight", () => void this.createHighlight()),
-      this.menuButton("Annotate", () => this.startAnnotate()),
-    );
-
     // Floating control shown only in immersive (collapsed) mode.
     this.immersiveExit = document.createElement("button");
     this.immersiveExit.className = "reader__immersive-exit";
@@ -215,7 +221,6 @@ class Reader {
       this.pages,
       this.backdrop,
       this.overlay,
-      this.menu,
       this.immersiveExit,
     );
 
@@ -232,9 +237,15 @@ class Reader {
       },
     });
 
+    // Remember the last selection so toolbar actions work even after iOS
+    // dismisses the visible selection when a toolbar button is tapped.
     this.selectionHub = new SelectionHub(this.pages, {
-      onSelect: (sel) => this.showMenu(sel),
-      onClear: () => this.hideMenu(),
+      onSelect: (sel) => {
+        this.pending = sel;
+      },
+      onClear: () => {
+        /* keep last selection for the toolbar actions */
+      },
     });
 
     this.installZoomInput();
@@ -530,23 +541,16 @@ class Reader {
     }).catch(() => {});
   }
 
-  // --- selection menu + annotations ---
+  // --- selection actions (toolbar-driven) + annotations ---
 
-  private showMenu(sel: CapturedSelection): void {
-    this.pending = sel;
-    this.menu.style.left = `${sel.anchor.x}px`;
-    this.menu.style.top = `${sel.anchor.y}px`;
-    this.menu.classList.add("is-open");
+  /** Current live selection, falling back to the last captured one. */
+  private currentSelection(): CapturedSelection | null {
+    return this.selectionHub.current() ?? this.pending;
   }
 
-  private hideMenu(): void {
-    this.pending = null;
-    this.menu.classList.remove("is-open");
-  }
-
-  private async createHighlight(): Promise<void> {
-    if (!this.pending) return;
-    const sel = this.pending;
+  private async doHighlight(): Promise<void> {
+    const sel = this.currentSelection();
+    if (!sel) return;
     const annotation: Annotation = {
       id: uid(),
       page: sel.page,
@@ -562,10 +566,10 @@ class Reader {
     this.clearSelectionUI();
   }
 
-  private startAnnotate(): void {
-    if (!this.pending) return;
-    this.annoContext = { mode: "create", selection: this.pending };
-    this.menu.classList.remove("is-open");
+  private doAnnotate(): void {
+    const sel = this.currentSelection();
+    if (!sel) return;
+    this.annoContext = { mode: "create", selection: sel };
     this.openPanel("annotate");
   }
 
@@ -616,7 +620,7 @@ class Reader {
   }
 
   private clearSelectionUI(): void {
-    this.hideMenu();
+    this.pending = null;
     window.getSelection()?.removeAllRanges();
   }
 
@@ -770,14 +774,22 @@ class Reader {
     await this.goToPage(target.page, target.yFraction);
   }
 
-  /** Accurate jump: render the target (and the page above, whose height affects
-   * the target's position) first, jump, then re-align as the layout settles. */
+  /** Accurate jump. Lazy-rendered pages above the target settle to real heights
+   * shortly after the jump, which would otherwise shift the target by ~a page.
+   * So we re-pin the target to the top every frame for a short window until the
+   * layout stops moving. */
   private async goToPage(page: number, yFraction: number): Promise<void> {
     await this.renderPage(page);
     if (page > 1) await this.renderPage(page - 1);
     this.scrollToTarget(page, yFraction, "auto");
-    window.setTimeout(() => this.scrollToTarget(page, yFraction, "auto"), 250);
-    window.setTimeout(() => this.scrollToTarget(page, yFraction, "auto"), 600);
+
+    const deadline = performance.now() + 800;
+    const repin = () => {
+      if (this.disposed) return;
+      this.scrollToTarget(page, yFraction, "auto");
+      if (performance.now() < deadline) requestAnimationFrame(repin);
+    };
+    requestAnimationFrame(repin);
   }
 
   /** Resolve a PDF destination to a page and a vertical fraction within it. */
@@ -829,14 +841,6 @@ class Reader {
   private zoomButton(label: string, onClick: () => void): HTMLButtonElement {
     const btn = document.createElement("button");
     btn.className = "reader__zoom-btn";
-    btn.textContent = label;
-    btn.addEventListener("click", onClick);
-    return btn;
-  }
-
-  private menuButton(label: string, onClick: () => void): HTMLButtonElement {
-    const btn = document.createElement("button");
-    btn.className = "reader__menu-btn";
     btn.textContent = label;
     btn.addEventListener("click", onClick);
     return btn;

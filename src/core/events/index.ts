@@ -48,6 +48,11 @@ export class SelectionHub {
     document.removeEventListener("selectionchange", this.onSelectionChange);
   }
 
+  /** The current selection right now, if any (for toolbar-driven actions). */
+  current(): CapturedSelection | null {
+    return this.capture();
+  }
+
   private evaluate(): void {
     const captured = this.capture();
     if (captured) this.handlers.onSelect(captured);
