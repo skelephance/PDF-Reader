@@ -37,7 +37,7 @@ self.addEventListener("fetch", (event) => {
       } catch {
         // Offline and uncached: fall back to the app shell for navigations.
         if (req.mode === "navigate") {
-          const shell = await cache.match("/");
+          const shell = await cache.match(self.registration.scope);
           if (shell) return shell;
         }
         return Response.error();

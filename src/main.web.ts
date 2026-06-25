@@ -9,7 +9,8 @@ startApp(createWebLibraryView);
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("/sw.js").catch(() => {
+    // BASE_URL keeps the scope correct under a subpath (e.g. GitHub Pages).
+    navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`).catch(() => {
       /* offline support is best-effort */
     });
   });

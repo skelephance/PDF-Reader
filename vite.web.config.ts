@@ -6,7 +6,9 @@ import { resolve } from "node:path";
 // (manifest, service worker, icons) are copied to the output root.
 export default defineConfig({
   root: "src",
-  base: "/",
+  // Relative base so the app works under a subpath (e.g. GitHub Pages
+  // /PDF-Reader/) as well as at a domain root.
+  base: "./",
   resolve: {
     alias: {
       "@": resolve(__dirname, "src"),

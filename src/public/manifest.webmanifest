@@ -2,17 +2,17 @@
   "name": "Libra-Local",
   "short_name": "Libra",
   "description": "A local-first, offline PDF reader.",
-  "start_url": "/",
-  "scope": "/",
+  "start_url": "./",
+  "scope": "./",
   "display": "standalone",
   "orientation": "any",
   "background_color": "#121214",
   "theme_color": "#3b6ef5",
   "icons": [
-    { "src": "/icons/192.png", "sizes": "192x192", "type": "image/png" },
-    { "src": "/icons/512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icons/192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/512.png", "sizes": "512x512", "type": "image/png" },
     {
-      "src": "/icons/512.png",
+      "src": "icons/512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
