@@ -529,19 +529,31 @@ class Reader {
   // --- zoom ---
 
   private installZoomInput(): void {
+    const updateOrigin = (clientX: number, clientY: number) => {
+      if (this.zoomWrap.style.transform === "") {
+        const rect = this.zoomWrap.getBoundingClientRect();
+        const x = clientX - rect.left;
+        const y = clientY - rect.top;
+        this.zoomWrap.style.transformOrigin = `${x}px ${y}px`;
+      }
+    };
+
     this.pages.addEventListener(
       "wheel",
       (e: WheelEvent) => {
         if (!e.ctrlKey) return;
         e.preventDefault();
-        // Gentle: clamp each event so trackpad pinches don't jump scale.
-        const step = Math.max(-0.06, Math.min(0.06, -e.deltaY * 0.0025));
-        this.zoom.zoomBy(1 + step);
+        updateOrigin(e.clientX, e.clientY);
+        // Exponential scale for smooth trackpad pinch
+        const factor = Math.exp(-e.deltaY * 0.01);
+        this.zoom.zoomBy(factor);
       },
       { passive: false },
     );
     this.pages.addEventListener("gesturestart", (e: Event) => {
       e.preventDefault();
+      // @ts-ignore - Safari gesture event
+      updateOrigin(e.clientX || window.innerWidth / 2, e.clientY || window.innerHeight / 2);
       this.gestureStart = this.zoom.scale;
     });
     this.pages.addEventListener("gesturechange", (e: Event) => {
@@ -552,8 +564,31 @@ class Reader {
   }
 
   private commitZoom(scale: number): void {
+    const oldScale = Number(this.zoomWrap.style.getPropertyValue("--zoom") || 1);
+    
+    // Remember the viewport center before layout change
+    const centerRect = this.pages.getBoundingClientRect();
+    const cx = centerRect.left + centerRect.width / 2;
+    const cy = centerRect.top + centerRect.height / 2;
+    
+    // Calculate the distance from top-left of the document to the center
+    const docRect = this.zoomWrap.getBoundingClientRect();
+    const docX = cx - docRect.left;
+    const docY = cy - docRect.top;
+    
+    // Apply the new layout scale
     this.zoomWrap.style.setProperty("--zoom", String(scale));
     this.zoomWrap.style.transform = "";
+    this.zoomWrap.style.transformOrigin = "";
+
+    // Adjust scroll to keep the visual center pinned
+    const ratio = scale / oldScale;
+    this.pages.scrollBy({
+      left: docX * ratio - docX,
+      top: docY * ratio - docY,
+      behavior: "instant"
+    });
+
     // Re-render the currently rendered pages crisply at the new scale.
     for (const n of [...this.rendered]) {
       this.rendered.delete(n);

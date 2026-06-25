@@ -1,11 +1,11 @@
 [package]
 name = "libra-local"
 version = "0.1.0"
-description = "Premium, local-first, offline PDF reader for legacy iOS chipsets."
+description = "Premium, local-first, offline PDF reader."
 edition = "2021"
 rust-version = "1.77"
 
-# A lib target is required for Tauri v2 mobile (iOS/Android) entry points.
+# A lib target is required for Tauri v2 mobile entry points.
 # Desktop entry lives in main.rs and delegates to `run()` in lib.rs.
 [lib]
 name = "libra_local_lib"

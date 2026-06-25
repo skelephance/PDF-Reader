@@ -1,6 +1,6 @@
 # Libra-Local — Development Roadmap
 
-A phased outline for building Libra-Local: a premium, local-first, offline PDF reader for legacy iOS chipsets (Tauri v2 + Rust + PDF.js). Phases are sequenced so each one stands on a working foundation from the last. Governing skills live in `skills/`.
+A phased outline for building Libra-Local: a premium, local-first, offline PDF reader (Tauri v2 + Rust + PDF.js). Phases are sequenced so each one stands on a working foundation from the last. Governing skills live in `skills/`.
 
 ---
 
@@ -8,7 +8,7 @@ A phased outline for building Libra-Local: a premium, local-first, offline PDF r
 
 **Goal:** A buildable, offline-capable shell that runs on device.
 
-- Tauri v2 project scaffold cross-compiling to iOS
+- Tauri v2 project scaffold
 - Directory structure per spec (`src-tauri/` host, `src/` webview)
 - `tokens.css` + `main.css` with the full design-token matrix
 - Network isolation verified: no CDNs, analytics, or remote hooks; assets/fonts bundled locally
