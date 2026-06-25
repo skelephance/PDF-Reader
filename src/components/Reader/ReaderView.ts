@@ -567,19 +567,17 @@ class Reader {
     const oldScale = Number(this.zoomWrap.style.getPropertyValue("--zoom") || 1);
     const ratio = scale / oldScale;
     
-    // Remember the viewport center before layout change
+    // The current VISUAL bounds of the transformed document
     const centerRect = this.pages.getBoundingClientRect();
-    const cx = centerRect.left + centerRect.width / 2;
-    const cy = centerRect.top + centerRect.height / 2;
-    
-    // Calculate the distance from top-left of the document to the center
     const docRect = this.zoomWrap.getBoundingClientRect();
-    const docX = cx - docRect.left;
-    const docY = cy - docRect.top;
+    
+    // The exact scroll position needed to match the visual transform
+    const targetScrollLeft = centerRect.left - docRect.left;
+    const targetScrollTop = centerRect.top - docRect.top;
     
     // Unrendered pages have frozen pixel heights to prevent scroll jitter.
     // We must scale those frozen heights, otherwise the document height won't
-    // grow correctly and our scroll compensation will throw us to the wrong page.
+    // grow correctly and our scroll compensation will be clamped by the browser.
     for (const el of this.zoomWrap.children) {
       const box = el as HTMLElement;
       if (box.style.height) {
@@ -593,10 +591,10 @@ class Reader {
     this.zoomWrap.style.transform = "";
     this.zoomWrap.style.transformOrigin = "";
 
-    // Adjust scroll to keep the visual center pinned
-    this.pages.scrollBy({
-      left: docX * ratio - docX,
-      top: docY * ratio - docY,
+    // Snap scroll to exactly match where the visual layout just was
+    this.pages.scrollTo({
+      left: targetScrollLeft,
+      top: targetScrollTop,
       behavior: "instant"
     });
 
