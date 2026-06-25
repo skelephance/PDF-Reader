@@ -1,0 +1,629 @@
+/* Libra-Local — global framework resets + app shell.
+ *
+ * Uses only design tokens for geometry. No external fonts/CDNs — the system
+ * font stack keeps the app fully offline and light on legacy devices.
+ */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body,
+#app {
+  height: 100%;
+}
+
+body {
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial,
+    sans-serif;
+  background: var(--color-bg);
+  color: var(--color-text);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  /* Disable rubber-band / pull-to-refresh inside the webview */
+  overscroll-behavior: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  border: none;
+  background: none;
+}
+
+/* --- App shell ------------------------------------------------------------ */
+
+.app-shell {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  /* Respect iOS safe areas without hardcoding pixels */
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.app-shell__body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
+
+.app-shell__view {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: var(--spacing-container);
+}
+
+/* Global navigation bar */
+.navbar {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-element);
+  padding: var(--spacing-element) var(--spacing-container);
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.navbar__back {
+  padding: var(--spacing-tight) var(--spacing-element);
+  border-radius: var(--radius-interactive);
+  background: var(--color-surface-2);
+  color: var(--color-accent);
+}
+
+.navbar__title {
+  font-size: 1.0625rem;
+  font-weight: 600;
+}
+
+/* Placeholder styling for the Phase 0 shell — replaced as views are built. */
+.placeholder {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-card);
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  text-align: center;
+  color: var(--color-text-muted);
+}
+
+.placeholder__card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-container);
+  padding: var(--spacing-container);
+}
+
+/* --- Library view --------------------------------------------------------- */
+
+.library-toolbar {
+  display: flex;
+  gap: var(--spacing-element);
+  margin-bottom: var(--spacing-card);
+}
+
+.library-toolbar__action {
+  padding: var(--spacing-tight) var(--spacing-card);
+  border-radius: var(--radius-interactive);
+  background: var(--color-accent);
+  color: var(--color-accent-contrast);
+  font-weight: 600;
+}
+
+.folder {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-card);
+}
+
+.folder:not(.folder--root) {
+  margin-top: var(--spacing-card);
+}
+
+.folder__name {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+
+.doc-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr));
+  gap: var(--spacing-card);
+}
+
+.doc-tile-wrap {
+  position: relative;
+}
+
+.doc-tile-wrap .doc-tile {
+  width: 100%;
+}
+
+.doc-tile__delete {
+  position: absolute;
+  top: var(--spacing-tight);
+  right: var(--spacing-tight);
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: var(--radius-interactive);
+  background: var(--color-surface-2);
+  color: var(--color-text-muted);
+  font-size: 0.8125rem;
+}
+
+.doc-tile {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-tight);
+  align-items: flex-start;
+  text-align: left;
+  padding: var(--spacing-card);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-container);
+  transition: transform var(--motion-fast) var(--easing-standard);
+}
+
+.doc-tile:active {
+  transform: scale(0.98);
+}
+
+.doc-tile__name {
+  font-weight: 600;
+  word-break: break-word;
+}
+
+.doc-tile__meta {
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+}
+
+/* --- Reader view ---------------------------------------------------------- */
+
+.reader {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Immersive (collapsed) mode: hide all chrome for a clean reading view. */
+.immersive .app-shell__navbar,
+.immersive .reader__toolbar {
+  display: none;
+}
+
+.reader__immersive-exit {
+  position: absolute;
+  top: var(--spacing-element);
+  right: var(--spacing-element);
+  display: none;
+  width: 2.25rem;
+  height: 2.25rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-interactive);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  color: var(--color-accent);
+  font-size: 1.125rem;
+  z-index: 6;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.immersive .reader__immersive-exit {
+  display: flex;
+}
+
+.reader__toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-element);
+  padding: var(--spacing-element) var(--spacing-container);
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+
+.reader__action {
+  padding: var(--spacing-tight) var(--spacing-card);
+  border-radius: var(--radius-interactive);
+  background: var(--color-surface-2);
+  color: var(--color-accent);
+  font-weight: 600;
+}
+
+.reader__indicator {
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+}
+
+.reader__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-element);
+}
+
+.reader__zoom-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-tight);
+}
+
+.reader__zoom-btn {
+  width: 2rem;
+  height: 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-interactive);
+  background: var(--color-surface-2);
+  color: var(--color-accent);
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+
+.reader__zoom-level {
+  min-width: 3rem;
+  text-align: center;
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+}
+
+.reader__pages {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  /* Block layout (not flex): aspect-ratio reliably computes page height here. */
+  display: block;
+  padding: var(--spacing-container);
+}
+
+/* Zoom wrapper: width grows with --zoom (committed scale); the transient
+ * transform during a gesture is GPU-composited for instant 60fps feedback. */
+.reader__zoom {
+  width: calc(100% * var(--zoom, 1));
+  max-width: none;
+  margin: 0 auto;
+  transform-origin: top center;
+  will-change: transform;
+}
+
+.pdf-page {
+  width: 100%;
+  margin: 0 0 var(--spacing-card);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-container);
+  overflow: hidden;
+}
+
+.pdf-page {
+  position: relative;
+}
+
+.pdf-page-canvas-render {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+/* Transparent text layer for selection (sits above the canvas). */
+.pdf-page-text-layer {
+  position: absolute;
+  inset: 0;
+  overflow: clip;
+  line-height: 1;
+  text-size-adjust: none;
+  forced-color-adjust: none;
+  transform-origin: 0 0;
+  z-index: 2;
+  /* Re-enable selection here (the app shell disables it globally). */
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+.pdf-page-text-layer :is(span, br) {
+  color: transparent;
+  position: absolute;
+  white-space: pre;
+  cursor: text;
+  transform-origin: 0 0;
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+.pdf-page-text-layer ::selection {
+  background: rgba(59, 110, 245, 0.3);
+}
+
+/* Saved highlights/notes (above the text layer; only the marks are clickable). */
+.pdf-page-annotations {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 3;
+}
+
+.pdf-mark {
+  position: absolute;
+  padding: 0;
+  border: none;
+  border-radius: 2px;
+  pointer-events: auto;
+  cursor: pointer;
+  mix-blend-mode: multiply;
+}
+
+.pdf-mark--note {
+  border-bottom: 2px solid var(--color-accent);
+}
+
+/* --- Reading themes ------------------------------------------------------- */
+/* Chrome recolors via token overrides (tokens.css); the page canvas recolors
+ * via a GPU-accelerated CSS filter here. Switching is a single attribute write
+ * on the document root — no re-rasterization (see skills/reading-themes). */
+
+[data-theme="night"] .pdf-page-canvas-render {
+  filter: invert(1) hue-rotate(180deg);
+}
+
+[data-theme="sepia"] .pdf-page-canvas-render {
+  filter: sepia(0.5) brightness(0.95) contrast(0.95);
+}
+
+/* Sliding TOC overlay (routed panel) */
+.reader__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--motion-panel) var(--easing-standard);
+}
+
+.reader__backdrop.is-open {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.reader__overlay {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: min(85%, 22rem);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-card);
+  padding: var(--spacing-container);
+  background: var(--color-surface);
+  border-left: 1px solid var(--color-border);
+  border-top-left-radius: var(--radius-container);
+  border-bottom-left-radius: var(--radius-container);
+  transform: translateX(100%);
+  transition: transform var(--motion-panel) var(--easing-standard);
+  overflow: auto;
+}
+
+.reader__overlay.is-open {
+  transform: translateX(0);
+}
+
+.reader__overlay-title {
+  font-size: 1.0625rem;
+  font-weight: 600;
+}
+
+.reader__overlay-empty {
+  color: var(--color-text-muted);
+}
+
+.reader__overlay-section {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted);
+  margin-top: var(--spacing-tight);
+}
+
+.reader__bookmark.is-active {
+  color: var(--color-accent);
+}
+
+.bookmark-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-tight);
+}
+
+.bookmark-item {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-tight);
+}
+
+.bookmark-jump {
+  flex: 1;
+  text-align: left;
+  padding: var(--spacing-tight) var(--spacing-element);
+  border-radius: var(--radius-interactive);
+  color: var(--color-text);
+}
+
+.bookmark-jump:active {
+  background: var(--color-surface-2);
+}
+
+.bookmark-remove {
+  width: 2rem;
+  height: 2rem;
+  border-radius: var(--radius-interactive);
+  color: var(--color-text-muted);
+}
+
+.bookmark-remove:active {
+  background: var(--color-surface-2);
+}
+
+.anno-nav-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-tight);
+}
+
+.anno-nav-jump {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-element);
+  width: 100%;
+  text-align: left;
+  padding: var(--spacing-tight) var(--spacing-element);
+  border-radius: var(--radius-interactive);
+  color: var(--color-text);
+}
+
+.anno-nav-jump:active {
+  background: var(--color-surface-2);
+}
+
+.anno-nav-dot {
+  flex: none;
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: 50%;
+}
+
+.anno-nav-text {
+  flex: 1;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: 0.875rem;
+}
+
+.anno-nav-page {
+  flex: none;
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+
+.toc-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-tight);
+}
+
+.toc-list .toc-list {
+  padding-left: var(--spacing-card);
+}
+
+.toc-entry {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: var(--spacing-tight) var(--spacing-element);
+  border-radius: var(--radius-interactive);
+  color: var(--color-text);
+}
+
+.toc-entry:active {
+  background: var(--color-surface-2);
+}
+
+/* Floating selection menu */
+.reader__menu {
+  position: fixed;
+  display: none;
+  gap: var(--spacing-tight);
+  padding: var(--spacing-tight);
+  background: var(--color-text);
+  border-radius: var(--radius-interactive);
+  transform: translate(-50%, calc(-100% - var(--spacing-tight)));
+  z-index: 10;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+}
+
+.reader__menu.is-open {
+  display: flex;
+}
+
+.reader__menu-btn {
+  padding: var(--spacing-tight) var(--spacing-element);
+  border-radius: var(--radius-interactive);
+  color: var(--color-surface);
+  font-weight: 600;
+  font-size: 0.875rem;
+}
+
+.reader__menu-btn:active {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+/* Annotation panel (inside the routed overlay) */
+.annotate {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-card);
+}
+
+.annotate__quote {
+  margin: 0;
+  padding: var(--spacing-element);
+  border-left: 3px solid var(--color-accent);
+  background: var(--color-surface-2);
+  border-radius: var(--radius-interactive);
+  color: var(--color-text-muted);
+  font-style: italic;
+}
+
+.annotate__input {
+  width: 100%;
+  padding: var(--spacing-element);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-interactive);
+  background: var(--color-bg);
+  color: var(--color-text);
+  font: inherit;
+  resize: vertical;
+}
+
+.annotate__actions {
+  display: flex;
+  gap: var(--spacing-element);
+}
+
+.annotate__save {
+  flex: 1;
+  padding: var(--spacing-tight) var(--spacing-card);
+  border-radius: var(--radius-interactive);
+  background: var(--color-accent);
+  color: var(--color-accent-contrast);
+  font-weight: 600;
+}
+
+.annotate__delete {
+  padding: var(--spacing-tight) var(--spacing-card);
+  border-radius: var(--radius-interactive);
+  background: var(--color-surface-2);
+  color: #d6453c;
+  font-weight: 600;
+}
