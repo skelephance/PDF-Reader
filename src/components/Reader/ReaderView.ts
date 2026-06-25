@@ -565,6 +565,7 @@ class Reader {
 
   private commitZoom(scale: number): void {
     const oldScale = Number(this.zoomWrap.style.getPropertyValue("--zoom") || 1);
+    const ratio = scale / oldScale;
     
     // Remember the viewport center before layout change
     const centerRect = this.pages.getBoundingClientRect();
@@ -576,13 +577,23 @@ class Reader {
     const docX = cx - docRect.left;
     const docY = cy - docRect.top;
     
+    // Unrendered pages have frozen pixel heights to prevent scroll jitter.
+    // We must scale those frozen heights, otherwise the document height won't
+    // grow correctly and our scroll compensation will throw us to the wrong page.
+    for (const el of this.zoomWrap.children) {
+      const box = el as HTMLElement;
+      if (box.style.height) {
+        const oldH = parseFloat(box.style.height);
+        box.style.height = `${oldH * ratio}px`;
+      }
+    }
+
     // Apply the new layout scale
     this.zoomWrap.style.setProperty("--zoom", String(scale));
     this.zoomWrap.style.transform = "";
     this.zoomWrap.style.transformOrigin = "";
 
     // Adjust scroll to keep the visual center pinned
-    const ratio = scale / oldScale;
     this.pages.scrollBy({
       left: docX * ratio - docX,
       top: docY * ratio - docY,
