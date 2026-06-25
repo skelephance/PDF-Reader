@@ -91,7 +91,6 @@ class Reader {
   private readonly overlayBody: HTMLElement;
   private readonly backdrop: HTMLElement;
   private readonly highlightButton: HTMLButtonElement;
-  private readonly annotateButton: HTMLButtonElement;
 
   private route: Route;
   private docHash: string;
@@ -174,17 +173,11 @@ class Reader {
     this.highlightButton.textContent = "Highlight";
     this.highlightButton.addEventListener("click", () => void this.doHighlight());
 
-    this.annotateButton = document.createElement("button");
-    this.annotateButton.className = "reader__action";
-    this.annotateButton.textContent = "Note";
-    this.annotateButton.addEventListener("click", () => this.doAnnotate());
-
     // Page indicator on the left; all actions grouped on the right.
     const actions = document.createElement("div");
     actions.className = "reader__actions";
     actions.append(
       this.highlightButton,
-      this.annotateButton,
       this.themeButton,
       this.bookmarkButton,
       zoomControls,
@@ -607,13 +600,6 @@ class Reader {
     await saveAnnotation(this.docHash, annotation).catch(() => {});
     this.refreshPageAnnotations(sel.page);
     this.clearSelectionUI();
-  }
-
-  private doAnnotate(): void {
-    const sel = this.currentSelection();
-    if (!sel) return;
-    this.annoContext = { mode: "create", selection: sel };
-    this.openPanel("annotate");
   }
 
   private openAnnotation(annotation: Annotation): void {
