@@ -3,7 +3,7 @@
 // served from cache, so the app works fully offline. Imported PDFs live in
 // OPFS (not here). Bump CACHE to invalidate after a deploy.
 
-const CACHE = "libra-local-v1";
+const CACHE = "libra-local-v2";
 
 self.addEventListener("install", () => {
   self.skipWaiting();
@@ -23,6 +23,25 @@ self.addEventListener("fetch", (event) => {
   const req = event.request;
   if (req.method !== "GET") return;
 
+  // Navigations (HTML): network-first, so a new deploy is picked up immediately;
+  // fall back to cache only when offline. Built assets have content-hashed names,
+  // so they're safe to serve cache-first.
+  if (req.mode === "navigate") {
+    event.respondWith(
+      (async () => {
+        const cache = await caches.open(CACHE);
+        try {
+          const res = await fetch(req);
+          cache.put(req, res.clone());
+          return res;
+        } catch {
+          return (await cache.match(req)) ?? (await cache.match(self.registration.scope)) ?? Response.error();
+        }
+      })(),
+    );
+    return;
+  }
+
   event.respondWith(
     (async () => {
       const cache = await caches.open(CACHE);
@@ -35,11 +54,6 @@ self.addEventListener("fetch", (event) => {
         }
         return res;
       } catch {
-        // Offline and uncached: fall back to the app shell for navigations.
-        if (req.mode === "navigate") {
-          const shell = await cache.match(self.registration.scope);
-          if (shell) return shell;
-        }
         return Response.error();
       }
     })(),
