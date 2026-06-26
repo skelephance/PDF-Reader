@@ -7,7 +7,14 @@ async function root(): Promise<FileSystemDirectoryHandle> {
 
 export async function writeFile(id: string, data: ArrayBuffer): Promise<void> {
   const handle = await (await root()).getFileHandle(id, { create: true });
-  const writable = await handle.createWritable();
+  let writable;
+  try {
+    writable = await handle.createWritable();
+  } catch (err) {
+    // Workaround for iOS Safari bug where createWritable fails the very 
+    // first time on a newly created file.
+    writable = await handle.createWritable();
+  }
   await writable.write(data);
   await writable.close();
 }

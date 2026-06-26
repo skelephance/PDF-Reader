@@ -48,9 +48,16 @@ function pickFiles(): Promise<File[]> {
     input.type = "file";
     input.accept = "application/pdf,.pdf";
     input.multiple = true;
-    input.addEventListener("change", () =>
-      resolve(input.files ? Array.from(input.files) : []),
-    );
+    input.style.display = "none";
+    
+    // Append to body to prevent iOS Safari from dropping the element
+    // when it switches contexts to the native Files app.
+    document.body.appendChild(input);
+
+    input.addEventListener("change", () => {
+      resolve(input.files ? Array.from(input.files) : []);
+      input.remove();
+    });
     input.click();
   });
 }
