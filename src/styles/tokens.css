@@ -1,0 +1,75 @@
+/* Libra-Local — Strict System Design Tokens.
+ *
+ * Single source of truth for layout geometry and color. Components reference
+ * these by name only; raw px/rem layout values and inline styles are barred
+ * (see skills/design-tokens). If a value isn't here, add a token — don't
+ * hardcode a one-off.
+ */
+
+:root {
+  /* Spacing scale (spec §4) */
+  --spacing-tight: 0.5rem; /* 8px  — inner element margins, label buffers */
+  --spacing-element: 0.75rem; /* 12px — toolbar configs, button gutters */
+  --spacing-card: 1rem; /* 16px — library thumbnails, annotation blocks */
+  --spacing-container: 1.5rem; /* 24px — master window outer boundaries */
+
+  /* Corner radii (spec §4) */
+  --radius-interactive: 12px; /* clickable buttons, select fields */
+  --radius-container: 20px; /* folder tiles, sliding contextual sheets */
+
+  /* Color — light (default). Kept minimal and system-native. */
+  --color-bg: #f6f6f7;
+  --color-surface: #ffffff;
+  --color-surface-2: #ececed;
+  --color-border: #d9d9dc;
+  --color-text: #1b1b1f;
+  --color-text-muted: #6b6b72;
+  --color-accent: #3b6ef5;
+  --color-accent-contrast: #ffffff;
+
+  /* Motion — short, GPU-friendly transitions */
+  --motion-fast: 120ms;
+  --motion-panel: 240ms;
+  --easing-standard: cubic-bezier(0.2, 0, 0, 1);
+}
+
+/* Color — dark. Follows the OS appearance; reading-page themes are handled
+ * separately via GPU CSS filters (see skills/reading-themes). */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-bg: #121214;
+    --color-surface: #1c1c1f;
+    --color-surface-2: #27272b;
+    --color-border: #34343a;
+    --color-text: #ececf1;
+    --color-text-muted: #9a9aa3;
+    --color-accent: #6c93ff;
+    --color-accent-contrast: #0f0f12;
+  }
+}
+
+/* Reading themes override the color tokens app-wide so the chrome (nav bar,
+ * toolbar, panels) recolors together with the pages. Placed after the media
+ * query so an explicit reading theme always wins. The page canvas filter is
+ * applied separately in main.css. */
+:root[data-theme="night"] {
+  --color-bg: #0c0c0e;
+  --color-surface: #18181b;
+  --color-surface-2: #26262b;
+  --color-border: #2e2e34;
+  --color-text: #ededf2;
+  --color-text-muted: #9a9aa3;
+  --color-accent: #6c93ff;
+  --color-accent-contrast: #0f0f12;
+}
+
+:root[data-theme="sepia"] {
+  --color-bg: #ece2cc;
+  --color-surface: #f4ecd8;
+  --color-surface-2: #e6dabb;
+  --color-border: #d9caa6;
+  --color-text: #4a3f2d;
+  --color-text-muted: #8a7c60;
+  --color-accent: #9a6a2f;
+  --color-accent-contrast: #fefaf0;
+}

@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Baseline capability set for the main window. Phase 1 adds the custom command permissions as the Rust command handlers are introduced.",
+  "windows": ["main"],
+  "permissions": ["core:default", "dialog:default"]
+}
